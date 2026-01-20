@@ -146,7 +146,7 @@ impl Default for ModelConfig {
         Self {
             orchestrator: env::var("PRAXIS_ORCHESTRATOR_MODEL")
                 .unwrap_or_else(|_| "qwen3-vl:8b".to_string()),
-            executor: env::var("PRAXIS_EXECUTOR_MODEL").unwrap_or_else(|_| "gemma3:4b".to_string()),
+            executor: env::var("PRAXIS_EXECUTOR_MODEL").unwrap_or_else(|_| "qwen3:8b".to_string()),
             alternatives: ModelAlternatives::default(),
         }
     }
@@ -349,7 +349,7 @@ mod tests {
     fn test_default_config() {
         let config = Config::default();
         assert_eq!(config.models.orchestrator, "qwen3-vl:8b");
-        assert_eq!(config.models.executor, "gemma3:4b");
+        assert_eq!(config.models.executor, "qwen3:8b");
         assert_eq!(config.ollama.port, 11434);
         assert!(config.streaming.enabled);
         assert_eq!(config.agent.max_turns, 10);

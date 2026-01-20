@@ -96,3 +96,7 @@ cargo test --test model_benchmark -- --ignored
 ## 📄 License
 
 MIT License - See [LICENSE](LICENSE) for details. (Place holder)
+
+## Possible Future Integrations
+
+- https://aspectron.org/en/projects/workflow-rs.html

@@ -86,16 +86,16 @@ impl BrowserExecutor {
         // Open the URL
         self.run_command(&["open", url]).await?;
 
-        // Optionally wait for network idle
+        // Always wait for network idle for more robust loading
         if wait_for_load {
             let _ = self.run_command(&["wait", "--load", "networkidle"]).await;
         }
 
-        // Get a snapshot
-        let snapshot_output = self.run_json_command(&["snapshot", "-i"]).await?;
+        // Get a compact interactive snapshot
+        let snapshot_output = self.run_json_command(&["snapshot", "-i", "-c"]).await?;
 
         Ok(ToolResult::success_with_data(
-            "browse_url",
+            "browser_url",
             format!("Navigated to {}. Page snapshot:\n{}", url, &snapshot_output),
             serde_json::from_str(&snapshot_output).unwrap_or(serde_json::Value::Null),
         ))
@@ -103,10 +103,15 @@ impl BrowserExecutor {
 
     /// Click an element by ref
     pub async fn click(&self, ref_id: &str) -> Result<ToolResult> {
-        self.run_command(&["click", ref_id]).await?;
+        let formatted_ref = self.format_ref(ref_id);
 
-        // Get updated snapshot after click
-        let snapshot_output = self.run_json_command(&["snapshot", "-i"]).await?;
+        self.run_command(&["click", &formatted_ref]).await?;
+
+        // Wait for page to stabilize
+        let _ = self.run_command(&["wait", "--load", "networkidle"]).await;
+
+        // Get updated compact interactive snapshot after click
+        let snapshot_output = self.run_json_command(&["snapshot", "-i", "-c"]).await?;
 
         Ok(ToolResult::success_with_data(
             "browser_click",
@@ -117,17 +122,31 @@ impl BrowserExecutor {
 
     /// Fill an input field
     pub async fn fill(&self, ref_id: &str, text: &str) -> Result<ToolResult> {
-        self.run_command(&["fill", ref_id, text]).await?;
+        let formatted_ref = self.format_ref(ref_id);
 
-        Ok(ToolResult::success(
+        self.run_command(&["fill", &formatted_ref, text]).await?;
+
+        // Wait for potential UI updates
+        let _ = self.run_command(&["wait", "--load", "networkidle"]).await;
+
+        // Get updated snapshot as fill can trigger dynamic changes
+        let snapshot_output = self.run_json_command(&["snapshot", "-i", "-c"]).await?;
+
+        Ok(ToolResult::success_with_data(
             "browser_fill",
-            format!("Filled {} with '{}'", ref_id, text),
+            format!(
+                "Filled {} with '{}'. Updated page:\n{}",
+                ref_id, text, &snapshot_output
+            ),
+            serde_json::from_str(&snapshot_output).unwrap_or(serde_json::Value::Null),
         ))
     }
 
     /// Get text from an element
     pub async fn get_text(&self, ref_id: &str) -> Result<ToolResult> {
-        let output = self.run_command(&["get", "text", ref_id]).await?;
+        let formatted_ref = self.format_ref(ref_id);
+
+        let output = self.run_command(&["get", "text", &formatted_ref]).await?;
 
         Ok(ToolResult::success("browser_get_text", output.trim()))
     }
@@ -160,11 +179,11 @@ impl BrowserExecutor {
 
     /// Get page snapshot
     pub async fn snapshot(&self, interactive_only: bool) -> Result<ToolResult> {
-        let args = if interactive_only {
-            vec!["snapshot", "-i"]
-        } else {
-            vec!["snapshot"]
-        };
+        let mut args = vec!["snapshot"];
+        if interactive_only {
+            args.push("-i");
+        }
+        args.push("-c"); // Always use compact mode for cleaner AI parsing
 
         let output = self.run_json_command(&args).await?;
 
@@ -229,11 +248,28 @@ impl BrowserExecutor {
 
     /// Wait for an element
     pub async fn wait_for(&self, selector: &str) -> Result<ToolResult> {
-        self.run_command(&["wait", selector]).await?;
+        let formatted_selector = self.format_ref(selector);
+
+        self.run_command(&["wait", &formatted_selector]).await?;
         Ok(ToolResult::success(
             "browser_wait",
             format!("Element {} is now visible", selector),
         ))
+    }
+
+    /// Helper to format a ref or selector
+    /// If it's a ref like "e1" or "@e1", ensures it's "@e1"
+    fn format_ref(&self, s: &str) -> String {
+        if s.starts_with('@') {
+            return s.to_string();
+        }
+
+        // If it looks like a ref (e followed by numbers)
+        if s.starts_with('e') && s.len() > 1 && s.chars().skip(1).all(|c| c.is_ascii_digit()) {
+            return format!("@{}", s);
+        }
+
+        s.to_string()
     }
 
     /// Wait for text to appear

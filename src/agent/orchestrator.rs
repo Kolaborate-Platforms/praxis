@@ -198,43 +198,38 @@ impl Agent {
         let browser_instructions = if self.browser_available {
             r#"
 ## Browser Tools
-- `browser_url`: Navigate to a URL. Args: {"url": "https://...", "wait_for_load": true}
-- `browser_snapshot`: Get interactive elements on the page. Returns elements with [ref=eN] tags.
+- `browser_url`: Navigate to a URL. Returns a COMPACT snapshot.
+- `browser_snapshot`: Get interactive elements. Returns elements with [ref=eN] tags.
 - `browser_fill`: Type text into an element. Args: {"ref": "e5", "text": "search query"}
 - `browser_click`: Click an element. Args: {"ref": "e8"}
 
-## CRITICAL: Using Element References
-When browser_snapshot returns elements like:
-  - combobox "Search" [ref=e5]
-  - button "Google Search" [ref=e8]
+## Optimal Browser Workflow:
+1. `browser_url`: Navigate to the site.
+2. **OBSERVE**: Identify the target element's ref (e.g., `e5`) from the snapshot provided in the observation.
+3. **ACT**: Use the EXACT ref (e.g., `e5`) with `browser_fill` or `browser_click`.
+4. **REPEAT**: Each action returns an updated snapshot. Always check the LATEST observation before selecting the next ref.
 
-You MUST use the exact ref value (e.g., "e5", "e8") when calling browser_fill or browser_click.
-WRONG: {"ref": "Search"} or {"ref": "google.com"}
-RIGHT: {"ref": "e5"}
-
-## Example Browser Workflow:
-1. browser_url with {"url": "https://google.com"}
-2. Check snapshot for search box ref (e.g., e5)
-3. browser_fill with {"ref": "e5", "text": "my search"}
-4. browser_click on search button ref (e.g., e8)"#
+## CRITICAL: Element References
+When a snapshot returns: `link "Sign in" [ref=e12]`, use `{"ref": "e12"}`.
+The system automatically handles the `@` prefix for you. DO NOT use descriptions or URLs as refs."#
         } else {
             ""
         };
 
         let system_prompt = format!(
             r#"You are an AI agent that uses tools to accomplish tasks. Follow the ReAct pattern:
-1. THINK about what you need to do
-2. ACT by calling appropriate tools
-3. OBSERVE the results and continue or provide final answer
+1. THINK about what you need to do.
+2. ACT by calling appropriate tools.
+3. OBSERVE the results and continue or provide final answer.
 
 ## Coding Tools
-- write_code, explain_code, debug_code
+- `write_code`, `explain_code`, `debug_code`
 {}
 
 ## Rules
-- When you have enough information, respond with your final answer WITHOUT calling tools.
-- Read observations carefully before choosing the next action.
-- Use EXACT element refs from snapshots, not descriptions."#,
+- Respond with your final answer ONLY when the task is complete.
+- ALWAYS read the latest tool observation carefully before choosing your next action.
+- Use EXACT element refs from snapshots for all browser interactions."#,
             browser_instructions
         );
 
