@@ -1,0 +1,52 @@
+[package]
+name = "praxis"
+version = "0.2.0"
+edition = "2021"
+description = "An offline-first AI coding agent with browser automation"
+authors = ["Calvin Magezi"]
+license = "MIT"
+
+[dependencies]
+# Async runtime
+tokio = { version = "1", features = ["full"] }
+
+# HTTP client for Ollama with streaming
+reqwest = { version = "0.12", features = ["json", "stream"] }
+
+# Streaming utilities
+futures = "0.3"
+tokio-stream = "0.1"
+
+# JSON serialization
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+# TOML for config files
+toml = "0.8"
+
+# Error handling
+thiserror = "2"
+anyhow = "1"
+
+# CLI argument parsing
+clap = { version = "4", features = ["derive"] }
+
+# Environment config
+dotenvy = "0.15"
+
+# Async traits
+async-trait = "0.1"
+
+# Directory paths
+dirs = "6"
+
+[dev-dependencies]
+tokio-test = "0.4"
+
+[[bin]]
+name = "praxis"
+path = "src/main.rs"
+
+[lib]
+name = "praxis"
+path = "src/lib.rs"
