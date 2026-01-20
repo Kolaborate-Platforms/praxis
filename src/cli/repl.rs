@@ -39,8 +39,26 @@ impl Repl {
         match self.agent.initialize().await {
             Ok(()) => println!(" Ready!\n"),
             Err(e) => {
-                println!("\nInitialization warning: {}\n", e);
+                println!("\n\n❌ Initialization Error: {}\n", e);
+                return Ok(());
             }
+        }
+
+        // Check for agent-browser if enabled but not found
+        if self.agent.config().browser.enabled && !self.agent.has_browser() {
+            println!("⚠️  agent-browser not found. Browser automation disabled.");
+            println!("   To enable: npm install -g agent-browser && agent-browser install");
+            print!("\nContinue without browser tools? [Y/n]: ");
+            io::stdout().flush()?;
+
+            let mut choice = String::new();
+            io::stdin().read_line(&mut choice)?;
+            let choice = choice.trim().to_lowercase();
+            if !choice.is_empty() && choice != "y" && choice != "yes" {
+                println!("Goodbye!");
+                return Ok(());
+            }
+            println!();
         }
 
         let stdin = io::stdin();
@@ -127,6 +145,7 @@ impl Repl {
 ╚═══════════════════════════════════════════════════════════╝
 "#
         );
+        println!("Ollama:     {}", config.ollama_url());
         println!("Models:");
         println!("  Orchestrator: {}", config.models.orchestrator);
         println!("  Executor:     {}", config.models.executor);

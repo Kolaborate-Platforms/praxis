@@ -62,7 +62,16 @@ impl Agent {
     /// Initialize the agent (check dependencies, models, etc.)
     pub async fn initialize(&mut self) -> Result<()> {
         // Check if Ollama is reachable
-        let models = self.llm.list_models().await?;
+        let models = match self.llm.list_models().await {
+            Ok(m) => m,
+            Err(_) => {
+                return Err(PraxisError::OllamaNotReachable(
+                    self.config.ollama_url(),
+                    self.config.models.orchestrator.clone(),
+                    self.config.models.executor.clone(),
+                ));
+            }
+        };
 
         if self.config.agent.debug {
             eprintln!("DEBUG: Available models: {:?}", models);
@@ -93,12 +102,6 @@ impl Agent {
         // Check if agent-browser is available
         if self.config.browser.enabled {
             self.browser_available = BrowserExecutor::is_available().await;
-            if !self.browser_available {
-                eprintln!(
-                    "Warning: agent-browser not found. Browser tools disabled.\n\
-                     Install with: npm install -g agent-browser && agent-browser install"
-                );
-            }
         }
 
         Ok(())

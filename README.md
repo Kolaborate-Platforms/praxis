@@ -14,24 +14,54 @@ Praxis is a high-performance, offline-first AI coding agent built in Rust. It ut
 
 ## 📋 Prerequisites
 
-1. **Ollama**: Install from [ollama.ai](https://ollama.ai/).
-   - Required models (defaults): `qwen3-vl:8b` (orchestrator), `gemma3:4b` (executor).
-2. **agent-browser (Optional)**: For web automation features.
-   ```bash
-   npm install -g agent-browser
-   agent-browser install
-   ```
+1.  **Ollama**: Install from [ollama.ai](https://ollama.ai/).
+    *   **Required models**: `qwen3-vl:8b` (orchestrator), `qwen3:8b` (executor).
+    *   **Setup**:
+        ```bash
+        ollama serve
+        ollama pull qwen3-vl:8b
+        ollama pull qwen3:8b
+        ```
+2.  **agent-browser (Optional)**: For web automation features.
+    ```bash
+    npm install -g agent-browser
+    agent-browser install
+    ```
+
+## 🚀 Installation
+
+### One-liner (Recommended)
+
+**macOS / Linux:**
+```bash
+curl --proto '=https' --tlsv1.2 -LsSf https://github.com/your-org/praxis/releases/latest/download/praxis-installer.sh | sh
+```
+
+**Windows (PowerShell):**
+```bash
+irm https://github.com/your-org/praxis/releases/latest/download/praxis-installer.ps1 | iex
+```
+
+### From Source
+
+```bash
+cargo install --path .
+```
 
 ## ⚙️ Configuration
 
-Praxis looks for configuration in `~/.config/praxis/config.toml`. You can also use environment variables.
+Praxis looks for configuration in `~/.config/praxis/config.toml`. It also respects environment variables like `OLLAMA_HOST` and `OLLAMA_PORT`.
 
 ### Example `config.toml`
 
 ```toml
+[ollama]
+host = "localhost"
+port = 11434
+
 [models]
 orchestrator = "qwen3-vl:8b"
-executor = "gemma3:4b"
+executor = "qwen3:8b"
 
 [agent]
 max_history = 1000
@@ -40,30 +70,22 @@ debug = false
 
 [browser]
 enabled = true
-session_name = "default"
+session_name = "praxis"
 
 [streaming]
 enabled = true
 ```
 
-## 🚀 Getting Started
-
-### Installation
-
-```bash
-cargo build --release
-```
-
-### Usage
+## 🚀 Usage
 
 **Interactive REPL:**
 ```bash
-./target/release/praxis
+praxis
 ```
 
 **Single Prompt:**
 ```bash
-./target/release/praxis -p "Research the latest Rust 1.84 features and summarize them."
+praxis -p "Research the latest Rust 1.84 features and summarize them."
 ```
 
 **Debug Mode:**
@@ -100,3 +122,4 @@ MIT License - See [LICENSE](LICENSE) for details. (Place holder)
 ## Possible Future Integrations
 
 - https://aspectron.org/en/projects/workflow-rs.html
+- https://github.com/workflow-rs/workflow-rs   

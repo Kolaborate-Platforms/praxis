@@ -39,6 +39,10 @@ pub enum PraxisError {
     #[error("agent-browser not found. Install with: npm install -g agent-browser && agent-browser install")]
     AgentBrowserNotFound,
 
+    /// Ollama not reachable
+    #[error("Cannot connect to Ollama at {0}. \n\nSetup steps:\n  1. Install: https://ollama.ai\n  2. Start: ollama serve\n  3. Pull models: ollama pull {1} && ollama pull {2}")]
+    OllamaNotReachable(String, String, String),
+
     /// Model not available
     #[error("Model '{0}' not available in Ollama. Run: ollama pull {0}")]
     ModelNotFound(String),
