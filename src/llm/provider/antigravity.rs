@@ -179,24 +179,68 @@ impl AntigravityProvider {
 impl LLMProvider for AntigravityProvider {
     async fn chat(
         &self,
-        #[allow(unused_variables)] model: &str,
-        #[allow(unused_variables)] messages: &[Message],
+        model: &str,
+        messages: &[Message],
         _options: Option<GenerateOptions>,
     ) -> Result<LLMResponse> {
         let token = self.get_valid_token().await?;
 
-        // This is a placeholder for the actual API call logic
-        // We need to know the specific endpoint for Antigravity.
-        // Assuming something like Vertex AI or a specific internal endpoint.
+        let client = reqwest::Client::new();
 
-        // For now, let's just error out saying we need the endpoint implementation
-        // or print the token for debugging (careful with logs!).
+        // Convert messages to Gemini format
+        let contents: Vec<serde_json::Value> = messages
+            .iter()
+            .map(|m| {
+                serde_json::json!({
+                    "role": if m.role == "user" { "user" } else { "model" },
+                    "parts": [{ "text": m.content }]
+                })
+            })
+            .collect();
 
-        // TODO: Implement actual API call using `token` and `model`
-        Err(PraxisError::ProviderError(format!(
-            "Antigravity chat API not yet implemented. Token available: {}",
-            token.len() > 0
-        )))
+        // Used discovered endpoint
+        let url = "https://cloudcode-pa.googleapis.com/v1internal:generateContent";
+
+        let body = serde_json::json!({
+            "model": model,
+            "contents": contents,
+            "generation_config": {
+                "candidate_count": 1,
+            }
+        });
+
+        let resp = client
+            .post(url)
+            .header("Authorization", format!("Bearer {}", token))
+            .header("Content-Type", "application/json")
+            .json(&body)
+            .send()
+            .await?;
+
+        if !resp.status().is_success() {
+            let error_text = resp.text().await.unwrap_or_default();
+            return Err(PraxisError::ProviderError(format!(
+                "Antigravity API error: {}",
+                error_text
+            )));
+        }
+
+        let response_json: serde_json::Value = resp.json().await?;
+
+        // Extract content from response
+        let content = response_json["candidates"][0]["content"]["parts"][0]["text"]
+            .as_str()
+            .ok_or_else(|| {
+                PraxisError::ProviderError("Failed to parse response content".to_string())
+            })?
+            .to_string();
+
+        Ok(LLMResponse {
+            content,
+            tool_calls: vec![],
+            usage: None,
+            model: model.to_string(),
+        })
     }
 
     async fn chat_with_tools(
