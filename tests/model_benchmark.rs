@@ -66,7 +66,9 @@ impl ModelBenchmark {
         config.models.orchestrator = model.to_string();
         config.agent.max_turns = 5; // Limit turns for benchmarking
 
-        let mut agent = Agent::with_config(config);
+        let mut agent = Agent::with_config(config)
+            .await
+            .expect("Failed to create agent");
 
         // Initialize with timeout
         let init_result = timeout(Duration::from_secs(30), agent.initialize()).await;

@@ -120,7 +120,7 @@ impl OllamaClient {
     /// Create a new Ollama client from configuration
     pub fn from_config(config: &Config) -> Self {
         let client = Client::builder()
-            .timeout(Duration::from_secs(config.ollama.timeout_secs))
+            .timeout(Duration::from_secs(config.providers.ollama.timeout_secs))
             .build()
             .expect("Failed to create HTTP client");
 

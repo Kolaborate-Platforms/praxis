@@ -58,6 +58,14 @@ pub enum PraxisError {
     /// Generic error for other cases
     #[error("{0}")]
     Other(String),
+
+    /// Authentication error
+    #[error("Authentication error: {0}")]
+    Auth(String),
+
+    /// Provider API error
+    #[error("Provider error: {0}")]
+    ProviderError(String),
 }
 
 /// Convenience Result type for Praxis operations
@@ -93,5 +101,15 @@ impl PraxisError {
             context: context.into(),
             source: Box::new(error),
         }
+    }
+
+    /// Create an auth error
+    pub fn auth(msg: impl Into<String>) -> Self {
+        Self::Auth(msg.into())
+    }
+
+    /// Create a provider error
+    pub fn provider(msg: impl Into<String>) -> Self {
+        Self::ProviderError(msg.into())
     }
 }

@@ -9,7 +9,7 @@ use std::sync::Arc;
 use crate::agent::conversation::Conversation;
 use crate::agent::loop_state::{AgentLoopState, Observation};
 use crate::core::{Config, Message, PraxisError, Result, ToolCall, ToolDefinition};
-use crate::llm::{GenerateOptions, LLMProvider, OllamaClient};
+use crate::llm::{create_provider, GenerateOptions, LLMProvider};
 use crate::tools::browser::BrowserExecutor;
 use crate::tools::ToolRegistry;
 
@@ -18,7 +18,7 @@ pub struct Agent {
     /// Configuration
     config: Config,
     /// LLM client
-    llm: OllamaClient,
+    llm: Arc<dyn LLMProvider>,
     /// Tool registry (wrapped in Arc for parallel execution)
     tools: Arc<ToolRegistry>,
     /// Conversation history
@@ -29,13 +29,13 @@ pub struct Agent {
 
 impl Agent {
     /// Create a new agent with default configuration
-    pub fn new() -> Self {
-        Self::with_config(Config::load())
+    pub async fn new() -> Result<Self> {
+        Self::with_config(Config::load()).await
     }
 
     /// Create an agent with custom configuration
-    pub fn with_config(config: Config) -> Self {
-        let llm = OllamaClient::from_config(&config);
+    pub async fn with_config(config: Config) -> Result<Self> {
+        let llm = create_provider(&config).await?;
 
         let tools = if config.browser.enabled {
             ToolRegistry::with_browser(&config.browser.session_name)
@@ -50,13 +50,20 @@ impl Agent {
             conversation.set_system_prompt(prompt.clone());
         }
 
-        Self {
+        Ok(Self {
             config,
             llm,
             tools: Arc::new(tools),
             conversation,
             browser_available: false, // Will be checked on first use
-        }
+        })
+    }
+
+    /// Enable session persistence
+    pub fn enable_persistence(&mut self, path: std::path::PathBuf) -> Result<()> {
+        self.conversation
+            .enable_persistence(path)
+            .map_err(|e| PraxisError::config(format!("Failed to enable persistence: {}", e)))
     }
 
     /// Initialize the agent (check dependencies, models, etc.)
@@ -65,11 +72,22 @@ impl Agent {
         let models = match self.llm.list_models().await {
             Ok(m) => m,
             Err(_) => {
-                return Err(PraxisError::OllamaNotReachable(
-                    self.config.ollama_url(),
-                    self.config.models.orchestrator.clone(),
-                    self.config.models.executor.clone(),
-                ));
+                // If using Ollama, provide specific error, otherwise generic
+                match self.config.provider {
+                    crate::core::config::ProviderType::Ollama => {
+                        return Err(PraxisError::OllamaNotReachable(
+                            self.config.ollama_url(),
+                            self.config.models.orchestrator.clone(),
+                            self.config.models.executor.clone(),
+                        ));
+                    }
+                    _ => {
+                        // For now just error out, maybe add specific error types later
+                        return Err(PraxisError::ModelNotFound(
+                            self.config.models.orchestrator.clone(),
+                        ));
+                    }
+                }
             }
         };
 
@@ -292,7 +310,7 @@ The system automatically handles the `@` prefix for you. DO NOT use descriptions
                 let name = tool_call.name.clone();
                 let prompt = self.tools.build_coding_prompt(tool_call);
 
-                // Clone what we need for the spawned task
+                // Clone the Arc reference for the spawned task
                 let llm = self.llm.clone();
                 let model = self.config.models.executor.clone();
 
@@ -382,6 +400,7 @@ The system automatically handles the `@` prefix for you. DO NOT use descriptions
     }
 
     /// Call the executor model for code generation (non-streaming)
+    #[allow(dead_code)]
     async fn call_executor(&self, prompt: &str) -> Result<String> {
         if self.config.streaming.enabled {
             // Use streaming for executor too
@@ -427,6 +446,7 @@ The system automatically handles the `@` prefix for you. DO NOT use descriptions
     }
 
     /// Check if a tool is a coding tool (needs executor)
+    #[allow(dead_code)]
     fn is_coding_tool(&self, name: &str) -> bool {
         matches!(name, "write_code" | "explain_code" | "debug_code")
     }
@@ -489,11 +509,5 @@ The system automatically handles the `@` prefix for you. DO NOT use descriptions
     /// Save current configuration to file
     pub fn save_config(&self) -> Result<std::path::PathBuf> {
         self.config.save_and_get_path()
-    }
-}
-
-impl Default for Agent {
-    fn default() -> Self {
-        Self::new()
     }
 }

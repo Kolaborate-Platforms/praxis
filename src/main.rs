@@ -65,7 +65,7 @@ async fn main() -> anyhow::Result<()> {
 
     // Single prompt mode
     if let Some(prompt) = args.prompt {
-        let mut agent = praxis::Agent::with_config(config);
+        let mut agent = praxis::Agent::with_config(config).await?;
         agent.initialize().await?;
 
         let response = agent.process(&prompt).await?;
@@ -74,7 +74,7 @@ async fn main() -> anyhow::Result<()> {
     }
 
     // Interactive REPL mode
-    let mut repl = Repl::with_config(config);
+    let mut repl = Repl::with_config(config).await?;
     repl.run().await?;
 
     Ok(())

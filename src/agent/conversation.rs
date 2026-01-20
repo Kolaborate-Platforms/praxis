@@ -6,8 +6,12 @@ use std::collections::VecDeque;
 
 use crate::core::Message;
 
+use serde::{Deserialize, Serialize};
+use std::fs;
+use std::path::PathBuf;
+
 /// Manages conversation history
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Conversation {
     /// Message history
     messages: VecDeque<Message>,
@@ -15,6 +19,9 @@ pub struct Conversation {
     max_length: usize,
     /// System prompt (always first)
     system_prompt: Option<String>,
+    /// Path for per-project persistence
+    #[serde(skip)]
+    persistence_path: Option<PathBuf>,
 }
 
 impl Conversation {
@@ -24,12 +31,67 @@ impl Conversation {
             messages: VecDeque::new(),
             max_length,
             system_prompt: None,
+            persistence_path: None,
+        }
+    }
+
+    /// Enable persistence to a specific file path
+    ///
+    /// If the file exists, loads history from it.
+    /// Future changes will be saved to this path.
+    pub fn enable_persistence(&mut self, path: PathBuf) -> std::io::Result<()> {
+        if path.exists() {
+            self.load(&path)?;
+        }
+        self.persistence_path = Some(path);
+        Ok(())
+    }
+
+    /// Load conversation history from a file
+    pub fn load(&mut self, path: &PathBuf) -> std::io::Result<()> {
+        let content = fs::read_to_string(path)?;
+        if content.trim().is_empty() {
+            return Ok(());
+        }
+
+        match serde_json::from_str::<Conversation>(&content) {
+            Ok(loaded) => {
+                self.messages = loaded.messages;
+                self.max_length = loaded.max_length;
+                self.system_prompt = loaded.system_prompt;
+                Ok(())
+            }
+            Err(e) => {
+                eprintln!("Warning: Failed to parse session file: {}", e);
+                // Don't fail completely, just start fresh but keep the path for future saves
+                Ok(())
+            }
+        }
+    }
+
+    /// Save conversation history to file
+    fn save(&self) {
+        if let Some(ref path) = self.persistence_path {
+            // Ensure directory exists
+            if let Some(parent) = path.parent() {
+                let _ = fs::create_dir_all(parent);
+            }
+
+            match serde_json::to_string_pretty(self) {
+                Ok(content) => {
+                    if let Err(e) = fs::write(path, content) {
+                        eprintln!("Warning: Failed to save session: {}", e);
+                    }
+                }
+                Err(e) => eprintln!("Warning: Failed to serialize session: {}", e),
+            }
         }
     }
 
     /// Set the system prompt
     pub fn set_system_prompt(&mut self, prompt: impl Into<String>) {
         self.system_prompt = Some(prompt.into());
+        self.save();
     }
 
     /// Add a user message
@@ -50,6 +112,8 @@ impl Conversation {
         while self.messages.len() > self.max_length {
             self.messages.pop_front();
         }
+
+        self.save();
     }
 
     /// Get all messages including system prompt
@@ -107,6 +171,7 @@ impl Conversation {
     /// Clear all history
     pub fn clear(&mut self) {
         self.messages.clear();
+        self.save();
     }
 
     /// Get message count
@@ -186,5 +251,81 @@ mod tests {
         let messages = conv.get_messages();
         assert_eq!(messages.len(), 2);
         assert_eq!(messages[0].role, "system");
+    }
+
+    #[test]
+    fn test_persistence_save_load() -> std::io::Result<()> {
+        let temp_dir = std::env::temp_dir().join("praxis_test");
+        let _ = std::fs::create_dir_all(&temp_dir);
+        let file_path = temp_dir.join("session_test.json");
+
+        // Clean up previous run
+        if file_path.exists() {
+            std::fs::remove_file(&file_path)?;
+        }
+
+        // Create and save
+        {
+            let mut conv = Conversation::new(10);
+            conv.enable_persistence(file_path.clone())?;
+            conv.add_user("Hello Persistent World");
+            conv.add_assistant("I remember you");
+        }
+
+        // Verify file exists
+        assert!(file_path.exists());
+
+        // Load into new instance
+        {
+            let mut conv = Conversation::new(10);
+            conv.enable_persistence(file_path.clone())?;
+
+            assert_eq!(conv.len(), 2);
+            assert_eq!(
+                conv.last_user_message().unwrap().content,
+                "Hello Persistent World"
+            );
+            assert_eq!(
+                conv.last_assistant_message().unwrap().content,
+                "I remember you"
+            );
+        }
+
+        // Cleanup
+        std::fs::remove_file(file_path)?;
+        Ok(())
+    }
+
+    #[test]
+    fn test_persistence_auto_save() -> std::io::Result<()> {
+        let temp_dir = std::env::temp_dir().join("praxis_test_auto");
+        let _ = std::fs::create_dir_all(&temp_dir);
+        let file_path = temp_dir.join("session_auto.json");
+
+        if file_path.exists() {
+            std::fs::remove_file(&file_path)?;
+        }
+
+        let mut conv = Conversation::new(10);
+        conv.enable_persistence(file_path.clone())?;
+
+        // Modify and check file
+        conv.add_user("msg1");
+        let content = std::fs::read_to_string(&file_path)?;
+        assert!(content.contains("msg1"));
+
+        // Modify again
+        conv.add_assistant("msg2");
+        let content = std::fs::read_to_string(&file_path)?;
+        assert!(content.contains("msg1"));
+        assert!(content.contains("msg2"));
+
+        // Clear
+        conv.clear();
+        let content = std::fs::read_to_string(&file_path)?;
+        assert!(!content.contains("msg1"));
+
+        std::fs::remove_file(file_path)?;
+        Ok(())
     }
 }

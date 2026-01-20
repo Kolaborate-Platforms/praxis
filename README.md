@@ -51,12 +51,34 @@ curl --proto '=https' --tlsv1.2 -LsSf https://github.com/Kolaborate-Platforms/pr
 **Windows (PowerShell):**
 ```bash
 irm https://github.com/Kolaborate-Platforms/praxis/releases/latest/download/praxis-installer.ps1 | iex
-```
-
 ### From Source
 
 ```bash
 cargo install --path .
+```
+
+## 🔄 Updating Praxis
+
+**npm:**
+```bash
+npm install -g @kolaborate/praxis@latest
+```
+
+**Homebrew:**
+```bash
+brew update && brew upgrade praxis
+```
+
+## 🗑️ Uninstalling
+
+**npm:**
+```bash
+npm uninstall -g @kolaborate/praxis
+```
+
+**Homebrew:**
+```bash
+brew uninstall praxis && brew untap kolaborate-platforms/tap
 ```
 
 ## ⚙️ Configuration

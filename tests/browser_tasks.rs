@@ -14,7 +14,7 @@ async fn create_browser_agent() -> Result<Agent, Box<dyn std::error::Error>> {
     config.agent.max_turns = 5;
     config.agent.debug = false;
 
-    let mut agent = Agent::with_config(config);
+    let mut agent = Agent::with_config(config).await?;
     agent.initialize().await?;
 
     if !agent.has_browser() {

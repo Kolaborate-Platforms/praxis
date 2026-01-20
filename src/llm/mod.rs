@@ -4,10 +4,12 @@
 
 pub mod models;
 pub mod ollama;
+pub mod provider;
 pub mod traits;
 
 pub use models::*;
 pub use ollama::OllamaClient;
+pub use provider::create_provider;
 pub use traits::{
     GenerateOptions, LLMProvider, LLMResponse, StreamCallback, StreamChunk, TokenUsage,
 };

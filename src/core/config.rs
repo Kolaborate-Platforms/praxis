@@ -15,8 +15,10 @@ use crate::core::error::{PraxisError, Result};
 /// Main configuration for Praxis
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Config {
-    /// Ollama configuration
-    pub ollama: OllamaConfig,
+    /// Active provider
+    pub provider: ProviderType,
+    /// Provider-specific configurations
+    pub providers: ProviderConfig,
     /// Model configuration
     pub models: ModelConfig,
     /// Browser configuration
@@ -28,6 +30,27 @@ pub struct Config {
     pub streaming: StreamingConfig,
 }
 
+/// Type of LLM provider
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "lowercase")]
+pub enum ProviderType {
+    Ollama,
+    OpenRouter,
+    GoogleGeminiCli,
+    GoogleAntigravity,
+    Kolaborate,
+}
+
+/// Helper struct for provider-specific settings
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ProviderConfig {
+    pub ollama: OllamaConfig,
+    pub openrouter: OpenRouterConfig,
+    pub google_antigravity: AntigravityConfig,
+    pub google_gemini_cli: GeminiCliConfig,
+    pub kolaborate: KolaborateConfig,
+}
+
 /// Ollama server configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct OllamaConfig {
@@ -37,6 +60,30 @@ pub struct OllamaConfig {
     pub port: u16,
     /// Request timeout in seconds
     pub timeout_secs: u64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct OpenRouterConfig {
+    pub api_key: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct AntigravityConfig {
+    pub project_id: Option<String>,
+    pub access_token: Option<String>,
+    pub refresh_token: Option<String>,
+    pub token_expiry: Option<u64>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct GeminiCliConfig {
+    // No specific config needed yet, relies on system auth/path
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct KolaborateConfig {
+    pub api_key: Option<String>,
+    pub endpoint: Option<String>,
 }
 
 /// Model configuration - interchangeable models
@@ -119,7 +166,8 @@ pub struct StreamingConfig {
 impl Default for Config {
     fn default() -> Self {
         Self {
-            ollama: OllamaConfig::default(),
+            provider: ProviderType::Ollama, // Default to Ollama for now
+            providers: ProviderConfig::default(),
             models: ModelConfig::default(),
             browser: BrowserConfig::default(),
             agent: AgentConfig::default(),
@@ -137,6 +185,28 @@ impl Default for OllamaConfig {
                 .and_then(|p| p.parse().ok())
                 .unwrap_or(11434),
             timeout_secs: 120,
+        }
+    }
+}
+
+impl Default for ProviderConfig {
+    fn default() -> Self {
+        Self {
+            ollama: OllamaConfig::default(),
+            openrouter: OpenRouterConfig {
+                api_key: env::var("OPENROUTER_API_KEY").ok(),
+            },
+            google_antigravity: AntigravityConfig {
+                project_id: env::var("ANTIGRAVITY_PROJECT_ID").ok(),
+                access_token: None,
+                refresh_token: None,
+                token_expiry: None,
+            },
+            google_gemini_cli: GeminiCliConfig {},
+            kolaborate: KolaborateConfig {
+                api_key: env::var("KOLABORATE_API_KEY").ok(),
+                endpoint: env::var("KOLABORATE_ENDPOINT").ok(),
+            },
         }
     }
 }
@@ -288,7 +358,10 @@ impl Config {
 
     /// Get the full Ollama API URL
     pub fn ollama_url(&self) -> String {
-        format!("http://{}:{}", self.ollama.host, self.ollama.port)
+        format!(
+            "http://{}:{}",
+            self.providers.ollama.host, self.providers.ollama.port
+        )
     }
 
     /// Update the orchestrator model
@@ -350,7 +423,7 @@ mod tests {
         let config = Config::default();
         assert_eq!(config.models.orchestrator, "qwen3-vl:8b");
         assert_eq!(config.models.executor, "qwen3:8b");
-        assert_eq!(config.ollama.port, 11434);
+        assert_eq!(config.providers.ollama.port, 11434);
         assert!(config.streaming.enabled);
         assert_eq!(config.agent.max_turns, 10);
     }

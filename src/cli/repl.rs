@@ -15,17 +15,17 @@ pub struct Repl {
 
 impl Repl {
     /// Create a new REPL with default configuration
-    pub fn new() -> Self {
-        Self {
-            agent: Agent::new(),
-        }
+    pub async fn new() -> Result<Self> {
+        Ok(Self {
+            agent: Agent::new().await?,
+        })
     }
 
     /// Create a REPL with custom configuration
-    pub fn with_config(config: Config) -> Self {
-        Self {
-            agent: Agent::with_config(config),
-        }
+    pub async fn with_config(config: Config) -> Result<Self> {
+        Ok(Self {
+            agent: Agent::with_config(config).await?,
+        })
     }
 
     /// Run the REPL
@@ -42,6 +42,21 @@ impl Repl {
                 println!("\n\n❌ Initialization Error: {}\n", e);
                 return Ok(());
             }
+        }
+
+        // Enable session persistence
+        let cwd = std::env::current_dir().unwrap_or_else(|_| std::path::PathBuf::from("."));
+        let session_path = cwd.join(".praxis").join("session.json");
+
+        // Notify user about session persistence
+        if session_path.exists() {
+            println!("📂 Loaded previous session from .praxis/session.json");
+        } else {
+            println!("💾 Session will be saved to .praxis/session.json");
+        }
+
+        if let Err(e) = self.agent.enable_persistence(session_path) {
+            eprintln!("⚠️  Warning: Failed to enable session persistence: {}", e);
         }
 
         // Check for agent-browser if enabled but not found
@@ -152,11 +167,5 @@ impl Repl {
         println!();
         println!("Commands: help, clear, models, status, exit");
         println!("─────────────────────────────────────────────────────────────");
-    }
-}
-
-impl Default for Repl {
-    fn default() -> Self {
-        Self::new()
     }
 }
