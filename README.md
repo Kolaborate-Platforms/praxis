@@ -30,16 +30,27 @@ Praxis is a high-performance, offline-first AI coding agent built in Rust. It ut
 
 ## 🚀 Installation
 
-### One-liner (Recommended)
+### npm (Recommended)
+```bash
+npm install -g @kolaborate/praxis
+```
+
+### Homebrew (macOS)
+```bash
+brew tap kolaborate-platforms/tap
+brew install praxis
+```
+
+### Direct Download (Shell Script)
 
 **macOS / Linux:**
 ```bash
-curl --proto '=https' --tlsv1.2 -LsSf https://github.com/your-org/praxis/releases/latest/download/praxis-installer.sh | sh
+curl --proto '=https' --tlsv1.2 -LsSf https://github.com/Kolaborate-Platforms/praxis/releases/latest/download/praxis-installer.sh | sh
 ```
 
 **Windows (PowerShell):**
 ```bash
-irm https://github.com/your-org/praxis/releases/latest/download/praxis-installer.ps1 | iex
+irm https://github.com/Kolaborate-Platforms/praxis/releases/latest/download/praxis-installer.ps1 | iex
 ```
 
 ### From Source

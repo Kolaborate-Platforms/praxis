@@ -1,0 +1,117 @@
+{
+  "name": "praxis",
+  "displayName": "Praxis - AI Coding Agent",
+  "description": "Spawn the Praxis offline-first AI coding agent in your terminal",
+  "version": "0.1.0",
+  "publisher": "kolaborate-platforms",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Kolaborate-Platforms/praxis"
+  },
+  "icon": "images/icon.png",
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Other",
+    "Machine Learning",
+    "Programming Languages"
+  ],
+  "keywords": [
+    "ai",
+    "coding",
+    "assistant",
+    "ollama",
+    "agent",
+    "terminal"
+  ],
+  "activationEvents": [
+    "onCommand:praxis.start",
+    "onCommand:praxis.startInSplit"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "praxis.start",
+        "title": "Start Praxis",
+        "category": "Praxis",
+        "icon": "$(rocket)"
+      },
+      {
+        "command": "praxis.startInSplit",
+        "title": "Start Praxis (Split Terminal)",
+        "category": "Praxis"
+      }
+    ],
+    "keybindings": [
+      {
+        "command": "praxis.start",
+        "key": "ctrl+shift+;",
+        "mac": "cmd+shift+;",
+        "when": "!terminalFocus"
+      },
+      {
+        "command": "praxis.start",
+        "key": "ctrl+escape",
+        "mac": "cmd+escape",
+        "when": "terminalFocus"
+      }
+    ],
+    "configuration": {
+      "title": "Praxis",
+      "properties": {
+        "praxis.executablePath": {
+          "type": "string",
+          "default": "praxis",
+          "description": "Path to the praxis executable. Use 'praxis' if it's in your PATH."
+        },
+        "praxis.orchestratorModel": {
+          "type": "string",
+          "default": "",
+          "description": "Override the orchestrator model (e.g., 'qwen3-vl:8b')"
+        },
+        "praxis.executorModel": {
+          "type": "string",
+          "default": "",
+          "description": "Override the executor model (e.g., 'qwen3:8b')"
+        },
+        "praxis.debug": {
+          "type": "boolean",
+          "default": false,
+          "description": "Enable debug output in Praxis"
+        },
+        "praxis.disableBrowser": {
+          "type": "boolean",
+          "default": false,
+          "description": "Disable browser automation tools"
+        }
+      }
+    },
+    "menus": {
+      "editor/title": [
+        {
+          "command": "praxis.start",
+          "group": "navigation"
+        }
+      ]
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "lint": "eslint src --ext ts",
+    "package": "vsce package",
+    "publish": "vsce publish"
+  },
+  "devDependencies": {
+    "@types/node": "^20.x",
+    "@types/vscode": "^1.85.0",
+    "@typescript-eslint/eslint-plugin": "^7.0.0",
+    "@typescript-eslint/parser": "^7.0.0",
+    "eslint": "^8.56.0",
+    "typescript": "^5.3.0",
+    "@vscode/vsce": "^2.22.0"
+  }
+}

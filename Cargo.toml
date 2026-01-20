@@ -1,10 +1,11 @@
 [package]
 name = "praxis"
-version = "0.2.1"
+version = "0.2.2"
 edition = "2021"
 description = "An offline-first AI coding agent with browser automation"
 authors = ["Calvin Magezi"]
 license = "MIT"
+homepage = "https://github.com/Kolaborate-Platforms/praxis"
 repository = "https://github.com/Kolaborate-Platforms/praxis"
 
 [dependencies]
@@ -59,13 +60,19 @@ cargo-dist-version = "0.30.3"
 # CI backends to support
 ci = "github"
 # The installers to generate for each app
-installers = ["shell", "powershell"]
+installers = ["shell", "powershell", "npm", "homebrew"]
 # Target platforms to build apps for (Rust target-triple syntax)
 targets = ["aarch64-apple-darwin", "x86_64-apple-darwin", "x86_64-unknown-linux-gnu", "x86_64-pc-windows-msvc"]
 # Whether to install an updater program
 install-updater = true
 # Path that installers should place binaries in
 install-path = "CARGO_HOME"
+# A namespace to use when publishing this package to the npm registry
+npm-scope = "@kolaborate"
+# A GitHub repo to push Homebrew formulas to
+tap = "Kolaborate-Platforms/homebrew-tap"
+# Publish jobs to run in CI
+publish-jobs = ["npm", "homebrew"]
 
 # The profile that 'dist' will build with
 [profile.dist]
